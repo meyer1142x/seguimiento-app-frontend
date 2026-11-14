@@ -1,4 +1,5 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Text, TextInput, View, useColorScheme } from 'react-native';
+import { getDynamicStyles, styles } from '@/styles/components/ui/Input.styles';
 
 interface InputProps {
   label: string;
@@ -23,56 +24,31 @@ export function Input({
   multiline = false,
   numberOfLines = 1,
 }: InputProps) {
+  const isDark = useColorScheme() === 'dark';
+  const dynamicStyles = getDynamicStyles(isDark);
+
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={[styles.label, dynamicStyles.label]}>
+        {label}
+      </Text>
       <TextInput
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor="#94A3B8"
+        placeholderTextColor={dynamicStyles.placeholderTextColor}
         secureTextEntry={secureTextEntry}
         keyboardType={keyboardType}
         multiline={multiline}
         numberOfLines={multiline ? numberOfLines : 1}
-        style={[styles.input, multiline && styles.textArea, error ? styles.errorBorder : null]}
+        style={[
+          styles.input,
+          dynamicStyles.input,
+          multiline && styles.textArea,
+          error ? styles.errorBorder : null,
+        ]}
       />
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#DDE6F0',
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: '#0F172A',
-  },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  errorBorder: {
-    borderColor: '#DC2626',
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 12,
-    marginTop: 6,
-  },
-});

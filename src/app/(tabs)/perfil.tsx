@@ -1,13 +1,18 @@
 import { router } from 'expo-router';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button } from '@/components/Button';
-import { Header } from '@/components/Header';
+import { Alert, ScrollView, Text, View, useColorScheme } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '@/components/ui/Button';
+import { Header } from '@/components/ui/Header';
 import { currentUser } from '@/mocks/users';
 import { logoutUser } from '@/services/authService';
+import { getColors, getDynamicStyles, styles } from '@/styles/screens/perfil.styles';
 
 export default function ProfileScreen() {
+  const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
+  const colors = getColors(isDark);
+  const dynamicStyles = getDynamicStyles(isDark, insets);
+
   const handleLogout = async () => {
     await logoutUser();
     Alert.alert('Sesión cerrada', 'Has salido de la aplicación.');
@@ -15,28 +20,28 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={[styles.safeArea, dynamicStyles.screen]}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Header title="Mi perfil" subtitle="Información personal y configuración." />
 
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, isDark && styles.profileCardDark]}>
           <Text style={styles.avatar}>{currentUser.avatar}</Text>
           <Text style={styles.name}>{currentUser.name}</Text>
           <Text style={styles.role}>{currentUser.role}</Text>
         </View>
 
-        <View style={styles.infoCard}>
-          <View style={styles.row}>
-            <Text style={styles.label}>Empleado</Text>
-            <Text style={styles.value}>{currentUser.employeeId}</Text>
+        <View style={[styles.infoCard, isDark && styles.infoCardDark]}>
+          <View style={[styles.row, isDark && styles.rowDark]}>
+            <Text style={[styles.label, { color: colors.muted }]}>Empleado</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{currentUser.employeeId}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Área</Text>
-            <Text style={styles.value}>{currentUser.area}</Text>
+          <View style={[styles.row, isDark && styles.rowDark]}>
+            <Text style={[styles.label, { color: colors.muted }]}>Área</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{currentUser.area}</Text>
           </View>
-          <View style={styles.row}>
-            <Text style={styles.label}>Correo</Text>
-            <Text style={styles.value}>{currentUser.email}</Text>
+          <View style={[styles.row, styles.lastRow, isDark && styles.rowDark]}>
+            <Text style={[styles.label, { color: colors.muted }]}>Correo</Text>
+            <Text style={[styles.value, { color: colors.text }]}>{currentUser.email}</Text>
           </View>
         </View>
 
@@ -46,77 +51,6 @@ export default function ProfileScreen() {
           <Button title="Cerrar sesión" variant="danger" onPress={handleLogout} />
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F3F7FB',
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 32,
-  },
-  profileCard: {
-    backgroundColor: '#0E2A47',
-    borderRadius: 20,
-    padding: 22,
-    alignItems: 'center',
-    marginBottom: 18,
-  },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#EAF3FF',
-    color: '#0E2A47',
-    fontWeight: '800',
-    fontSize: 24,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    marginBottom: 12,
-  },
-  name: {
-    color: '#FFFFFF',
-    fontSize: 24,
-    fontWeight: '800',
-  },
-  role: {
-    color: '#D7E6F8',
-    marginTop: 6,
-    fontSize: 14,
-  },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    padding: 16,
-    marginBottom: 18,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingVertical: 10,
-  },
-  label: {
-    color: '#475569',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  value: {
-    color: '#0F172A',
-    fontWeight: '700',
-    fontSize: 13,
-    textAlign: 'right',
-    flexShrink: 1,
-  },
-  actions: {
-    gap: 12,
-  },
-});

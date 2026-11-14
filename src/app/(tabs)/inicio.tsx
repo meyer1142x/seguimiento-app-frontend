@@ -1,18 +1,18 @@
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, Text, View, useColorScheme } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button } from '@/components/Button';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Header } from '@/components/Header';
-import { IncidentCard } from '@/components/IncidentCard';
-import { Loading } from '@/components/Loading';
-import { WeatherCard } from '@/components/WeatherCard';
+import { Button } from '@/components/ui/Button';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { Header } from '@/components/ui/Header';
+import { IncidentCard } from '@/components/features/IncidentCard';
+import { Loading } from '@/components/ui/Loading';
+import { WeatherCard } from '@/components/features/WeatherCard';
 import { currentUser } from '@/mocks/users';
 import { getIncidents } from '@/services/incidentsService';
 import { getCurrentWeather } from '@/services/weatherService';
 import type { Incident, WeatherData } from '@/types';
+import { getColors, styles } from '@/styles/screens/inicio.styles';
 
 export default function DashboardScreen() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -20,26 +20,33 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
+  const isDark = useColorScheme() === 'dark';
+  const colors = getColors(isDark);
+
   useEffect(() => {
-    void loadDashboardData();
+    let active = true;
+
+    void Promise.all([getIncidents(), getCurrentWeather()])
+      .then(([incidentsResult, weatherResult]) => {
+        if (active) {
+          setIncidents(incidentsResult);
+          setWeatherData(weatherResult);
+        }
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          const message = error instanceof Error ? error.message : 'Error al cargar la información.';
+          setWeatherError(message);
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, []);
-
-  async function loadDashboardData() {
-    try {
-      const [incidentsResult, weatherResult] = await Promise.all([
-        getIncidents(),
-        getCurrentWeather(),
-      ]);
-
-      setIncidents(incidentsResult);
-      setWeatherData(weatherResult);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Error al cargar la información.';
-      setWeatherError(message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   const summary = useMemo(() => {
     return {
@@ -56,11 +63,14 @@ export default function DashboardScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView 
+      edges={['top']} 
+      style={[styles.safeArea, { backgroundColor: colors.bg }]}
+    >
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Header title={`Hola, ${currentUser.name.split(' ')[0]} 👋`} subtitle="¿Qué necesitas hoy?" />
 
-        <View style={styles.primaryCard}>
+        <View style={[styles.primaryCard, isDark && styles.primaryCardDark]}>
           <Text style={styles.primaryTitle}>Reportar una incidencia</Text>
           <Button title="+ Nueva incidencia" onPress={() => router.push('/(tabs)/reportar')} />
         </View>
@@ -69,26 +79,33 @@ export default function DashboardScreen() {
         {weatherData ? <WeatherCard weather={weatherData} /> : null}
 
         <View style={styles.summaryWrap}>
-          <Text style={styles.sectionTitle}>Resumen</Text>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Resumen
+          </Text>
           <View style={styles.summaryGrid}>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Pendientes</Text>
-              <Text style={styles.summaryValue}>{summary.pendiente}</Text>
+            <View style={[styles.summaryCard, isDark && styles.summaryCardDark]}>
+              <Text style={[styles.summaryLabel, { color: colors.muted }]}>Pendientes</Text>
+              <Text style={[styles.summaryValue, { color: colors.text }]}>{summary.pendiente}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>En proceso</Text>
-              <Text style={styles.summaryValue}>{summary.proceso}</Text>
+            <View style={[styles.summaryCard, isDark && styles.summaryCardDark]}>
+              <Text style={[styles.summaryLabel, { color: colors.muted }]}>En proceso</Text>
+              <Text style={[styles.summaryValue, { color: colors.accentBlue }]}>{summary.proceso}</Text>
             </View>
-            <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Resueltas</Text>
-              <Text style={styles.summaryValue}>{summary.resueltas}</Text>
+            <View style={[styles.summaryCard, isDark && styles.summaryCardDark]}>
+              <Text style={[styles.summaryLabel, { color: colors.muted }]}>Resueltas</Text>
+              <Text style={[styles.summaryValue, { color: colors.success }]}>{summary.resueltas}</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Mis incidencias recientes</Text>
-          <Text style={styles.linkText} onPress={() => router.push('/(tabs)/incidencias')}>
+          <Text style={[styles.sectionTitle, styles.sectionTitleNoMargin, { color: colors.text }]}>
+            Mis incidencias recientes
+          </Text>
+          <Text 
+            style={[styles.linkText, { color: colors.accentBlue }]} 
+            onPress={() => router.push('/(tabs)/incidencias')}
+          >
             Ver todas
           </Text>
         </View>
@@ -102,79 +119,11 @@ export default function DashboardScreen() {
             />
           ))
         ) : (
-          <Text style={styles.emptyText}>No hay incidencias recientes.</Text>
+          <Text style={[styles.emptyText, { color: colors.muted }]}>
+            No hay incidencias recientes.
+          </Text>
         )}
       </ScrollView>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F3F7FB',
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  primaryCard: {
-    backgroundColor: '#0E2A47',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 18,
-  },
-  primaryTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  summaryWrap: {
-    marginBottom: 18,
-  },
-  sectionTitle: {
-    color: '#0F172A',
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  summaryGrid: {
-    flexDirection: 'row',
-    gap: 10,
-    justifyContent: 'space-between',
-  },
-  summaryCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  summaryLabel: {
-    color: '#64748B',
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  summaryValue: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  linkText: {
-    color: '#2563EB',
-    fontWeight: '700',
-  },
-  emptyText: {
-    color: '#64748B',
-    fontSize: 14,
-  },
-});

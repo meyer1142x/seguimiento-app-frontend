@@ -1,79 +1,95 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
-import { Button } from '@/components/Button';
-import { ErrorMessage } from '@/components/ErrorMessage';
-import { Input } from '@/components/Input';
+import { KeyboardAvoidingView, Platform, ScrollView, Text, View, useColorScheme, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Button } from '@/components/ui/Button';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { Input } from '@/components/ui/Input';
 import { testCredentials } from '@/mocks/users';
 import { getStoredUser, loginMock } from '@/services/authService';
+import { getColors, getDynamicStyles, styles } from '@/styles/screens/index.styles';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState(testCredentials.email);
   const [password, setPassword] = useState(testCredentials.password);
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loadingRole, setLoadingRole] = useState<'EMPLEADO' | 'TECNICO' | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
+
+  const isDark = useColorScheme() === 'dark';
+  const insets = useSafeAreaInsets();
+  const colors = getColors(isDark);
+  const dynamicStyles = getDynamicStyles(insets);
 
   useEffect(() => {
     const checkSession = async () => {
       const user = await getStoredUser();
       if (user) {
+                                                                        
         router.replace('/(tabs)/inicio');
       }
     };
-
     void checkSession();
   }, []);
 
   const validate = () => {
     const nextErrors: { email?: string; password?: string } = {};
-
     if (!email.trim()) nextErrors.email = 'El correo es obligatorio.';
     if (!password.trim()) nextErrors.password = 'La contraseña es obligatoria.';
-
     setFieldErrors(nextErrors);
     return Object.keys(nextErrors).length === 0;
   };
 
-  const handleLogin = async () => {
-    if (!validate()) {
-      return;
-    }
-
-    setLoading(true);
+                                                      
+  const handleLogin = async (role: 'EMPLEADO' | 'TECNICO') => {
+    if (!validate()) return;
+    setLoadingRole(role);
     setFormError(null);
-
     try {
       await loginMock(email, password);
-      router.replace('/(tabs)/inicio');
+      
+                                                             
+      if (role === 'TECNICO') {
+        router.replace('/tecnico-inicio');
+      } else {
+        router.replace('/(tabs)/inicio');
+      }
+      
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Correo o contraseña incorrectos.';
       setFormError(message);
     } finally {
-      setLoading(false);
+      setLoadingRole(null);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.keyboardView}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={[styles.screen, { backgroundColor: colors.bg }]}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
+        <ScrollView 
+          contentContainerStyle={[styles.container, dynamicStyles.container]} 
+          keyboardShouldPersistTaps="handled" 
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.brandBox}>
-            <Text style={styles.logo}>IT</Text>
-            <Text style={styles.title}>Fix-IT InnovaTech</Text>
-            <Text style={styles.subtitle}>Gestión inteligente de incidencias tecnológicas</Text>
+            <View style={styles.logoBox}>
+              <Text style={styles.logoText}>IT</Text>
+            </View>
+            <Text style={[styles.title, { color: colors.text }]}>Fix-IT InnovaTech</Text>
+            <Text style={[styles.subtitle, { color: colors.muted }]}>
+              Gestión inteligente de incidencias tecnológicas
+            </Text>
           </View>
 
-          <View style={styles.formCard}>
+          <View style={[
+            styles.formCard, 
+            isDark ? styles.formCardDark : styles.formCardLight
+          ]}>
             {formError ? <ErrorMessage message={formError} /> : null}
 
             <Input
-              label="Correo"
+              label="Correo electrónico"
               value={email}
               onChangeText={(value) => {
                 setEmail(value);
@@ -96,76 +112,31 @@ export default function LoginScreen() {
               error={fieldErrors.password}
             />
 
-            <Text style={styles.toggleText} onPress={() => setShowPassword((value) => !value)}>
-              {showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-            </Text>
+            <View style={styles.optionsRow}>
+              <Pressable onPress={() => setShowPassword((value) => !value)} hitSlop={10}>
+                <Text style={[styles.toggleText, { color: colors.accentBlue }]}>
+                  {showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                </Text>
+              </Pressable>
+            </View>
 
-            <Button title={loading ? 'Iniciando sesión...' : 'Iniciar sesión'} onPress={handleLogin} disabled={loading} />
+            <View style={styles.actionButtons}>
+              <Button 
+                title={loadingRole === 'EMPLEADO' ? 'Iniciando...' : 'Entrar como Empleado'} 
+                onPress={() => handleLogin('EMPLEADO')} 
+                disabled={loadingRole !== null} 
+              />
+              <Button 
+                title={loadingRole === 'TECNICO' ? 'Iniciando...' : 'Entrar como Técnico'} 
+                variant="secondary"
+                onPress={() => handleLogin('TECNICO')} 
+                disabled={loadingRole !== null} 
+              />
+            </View>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#EEF4FF',
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  container: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    padding: 20,
-  },
-  brandBox: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logo: {
-    width: 86,
-    height: 86,
-    borderRadius: 22,
-    backgroundColor: '#0E2A47',
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 30,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    marginBottom: 18,
-  },
-  title: {
-    color: '#0F172A',
-    fontSize: 28,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  subtitle: {
-    color: '#475569',
-    fontSize: 15,
-    textAlign: 'center',
-    width: '90%',
-  },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#0F172A',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  toggleText: {
-    color: '#2563EB',
-    fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 16,
-    alignSelf: 'flex-end',
-  },
-});
